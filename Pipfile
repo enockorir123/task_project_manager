@@ -5,6 +5,7 @@ verify_ssl = true
 
 [packages]
 sqlalchemy = "*"
+alembic = "*"
 
 [dev-packages]
 pytest = "*"

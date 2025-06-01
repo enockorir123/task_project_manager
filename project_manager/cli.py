@@ -1,5 +1,13 @@
 # project_manager/cli.py
 
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from project_manager.models import Base, engine
+import project_manager.models.project
+import project_manager.models.task
+Base.metadata.create_all(bind=engine)
 from project_manager.helpers import (
     exit_program,
     create_project,
@@ -16,8 +24,12 @@ from project_manager.helpers import (
 
 def main():
     while True:
-        menu()
+        print("\n=== TASK & PROJECT MANAGER ===")
+        print("1. Projects")
+        print("2. Tasks")
+        print("0. Exit")
         choice = input("> ").strip()
+
         if choice == "0":
             exit_program()
         elif choice == "1":
@@ -25,24 +37,19 @@ def main():
         elif choice == "2":
             task_menu()
         else:
-            print("Invalid choice. Please select 0, 1, or 2.")
-
-def menu():
-    print("\n=== TASK & PROJECT MANAGER ===")
-    print("1. Projects")
-    print("2. Tasks")
-    print("0. Exit")
+            print("❌ Invalid choice. Please select 0, 1, or 2.")
 
 def project_menu():
     while True:
         print("\n--- PROJECT MENU ---")
         print("1. Create a project")
         print("2. List all projects")
-        print("3. Find a project by name")
+        print("3. Find a project by name or ID")
         print("4. Delete a project")
         print("5. View tasks for a project")
         print("0. Back to main menu")
         choice = input("> ").strip()
+
         if choice == "0":
             return
         elif choice == "1":
@@ -56,18 +63,19 @@ def project_menu():
         elif choice == "5":
             view_project_tasks()
         else:
-            print("Invalid choice. Choose 0–5.")
+            print("❌ Invalid choice. Choose 0–5.")
 
 def task_menu():
     while True:
         print("\n--- TASK MENU ---")
         print("1. Create a task")
         print("2. List all tasks")
-        print("3. Find a task by name")
+        print("3. Find a task by name or ID")
         print("4. Delete a task")
         print("5. View task details")
         print("0. Back to main menu")
         choice = input("> ").strip()
+
         if choice == "0":
             return
         elif choice == "1":
@@ -81,7 +89,7 @@ def task_menu():
         elif choice == "5":
             view_task_details()
         else:
-            print("Invalid choice. Choose 0–5.")
+            print("❌ Invalid choice. Choose 0–5.")
 
 if __name__ == "__main__":
     main()
