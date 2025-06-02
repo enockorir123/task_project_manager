@@ -85,25 +85,32 @@ def create_project():
         session.close()
 
 def list_projects():
-    """List all projects."""
+    """List all projects with progress and days remaining."""
     session = SessionLocal()
     try:
         projects = session.query(Project).order_by(Project.deadline).all()
         if not projects:
             print("\n⚠️ No projects found.\n")
             return
+
         print("\n📋 PROJECT LIST")
-        print("=" * 50)
+        print("=" * 60)
         for p in projects:
-            print(f"ID: {p.id} | Name: {p.name} | Deadline: {p.deadline} | Priority: {p.priority}")
-        print("=" * 50)
+            perc = f"{p.completion_percentage:.0f}%"
+            days = p.days_remaining
+            days_str = f"{days} days remaining" if days >= 0 else f"Overdue by {abs(days)} days"
+            print(
+                f"ID: {p.id} | Name: {p.name} | Deadline: {p.deadline} | "
+                f"Priority: {p.priority} | Progress: {perc} | {days_str}"
+            )
+        print("=" * 60)
     except Exception as e:
         print(f"❌ Error listing projects: {e}")
     finally:
         session.close()
 
 def find_project():
-    """Find a project by ID or name."""
+    """Find a project by ID or name, and show progress and days remaining."""
     session = SessionLocal()
     try:
         search_term = input("Enter project ID or name to search: ").strip()
@@ -116,6 +123,13 @@ def find_project():
             print(f"⚠️ Project '{search_term}' not found.")
             return
 
+        perc = f"{project.completion_percentage:.0f}% complete"
+        days = project.days_remaining
+        if days is None:
+            days_str = "No deadline set"
+        else:
+            days_str = f"{days} days remaining" if days >= 0 else f"Overdue by {abs(days)} days"
+
         print("\n📋 PROJECT DETAILS")
         print("=" * 40)
         print(f"ID:          {project.id}")
@@ -124,6 +138,9 @@ def find_project():
         print(f"Start Date:  {project.start_date}")
         print(f"Deadline:    {project.deadline}")
         print(f"Priority:    {project.priority}")
+        print(f"Status:      {project.status}")
+        print(f"Progress:    {perc}")
+        print(f"Time Left:   {days_str}")
         print("=" * 40)
 
     except Exception as e:
@@ -150,10 +167,7 @@ def delete_project():
             print("❌ Deletion cancelled.")
             return
 
-        # Delete all tasks associated with the project
         session.query(Task).filter(Task.project_id == project.id).delete()
-
-        # Delete the project itself
         session.delete(project)
         session.commit()
         print(f"✅ Project '{project.name}' and its tasks have been deleted.")
@@ -184,10 +198,18 @@ def view_project_tasks():
             return
 
         print(f"\n📋 TASKS FOR PROJECT: {project.name}")
-        print("=" * 50)
+        print("=" * 60)
         for t in tasks:
-            print(f"ID: {t.id} | Name: {t.name} | Status: {t.status} | Due: {t.due_date}")
-        print("=" * 50)
+            days = t.days_remaining
+            time_str = (
+                f"{days}d remaining" if days >= 0
+                else f"Overdue by {abs(days)}d"
+            ) if t.due_date else "No due date"
+            print(
+                f"ID: {t.id} | Name: {t.name} | Status: {t.status} | "
+                f"Due: {t.due_date or '-'} ({time_str})"
+            )
+        print("=" * 60)
 
     except Exception as e:
         print(f"❌ Error viewing project tasks: {e}")
@@ -208,7 +230,6 @@ def create_task():
             print("❌ Task name cannot be empty!")
             return
 
-        # Select project for task
         project_id = input("Project ID to assign task to: ").strip()
         if not project_id.isdigit():
             print("❌ Invalid project ID.")
@@ -223,13 +244,11 @@ def create_task():
         if description == "":
             description = None
 
-        # Status (To Do, In Progress, Done)
         status_map = {'1': 'To Do', '2': 'In Progress', '3': 'Done'}
         print("Task status options: 1=To Do, 2=In Progress, 3=Done")
         status_choice = input("Select status (1-3) [default=1]: ").strip()
         status = status_map.get(status_choice, 'To Do')
 
-        # Due date (optional)
         due_input = input("Due date [YYYY-MM-DD] (optional): ").strip()
         if due_input == "":
             due_date = None
@@ -275,7 +294,13 @@ def list_tasks():
         print("=" * 60)
         for t in tasks:
             project_name = t.project.name if t.project else "No Project"
-            print(f"ID: {t.id} | Name: {t.name} | Project: {project_name} | Status: {t.status} | Due: {t.due_date or '-'}")
+            due = t.due_date or "-"
+            days = t.days_remaining
+            time_str = f"{days}d remaining" if days is not None and days >= 0 else (f"Overdue by {abs(days)}d" if days is not None else "No due date")
+            print(
+                f"ID: {t.id} | Name: {t.name} | Project: {project_name} | "
+                f"Status: {t.status} | Due: {due} ({time_str})"
+            )
         print("=" * 60)
     except Exception as e:
         print(f"❌ Error listing tasks: {e}")
@@ -296,13 +321,19 @@ def find_task():
             print(f"⚠️ Task '{search_term}' not found.")
             return
 
+        days = task.days_remaining
+        if days is None:
+            time_str = "No due date"
+        else:
+            time_str = f"{days}d remaining" if days >= 0 else f"Overdue by {abs(days)}d"
+
         print("\n📝 TASK DETAILS")
         print("=" * 40)
         print(f"ID:          {task.id}")
         print(f"Name:        {task.name}")
         print(f"Description: {task.description or '-'}")
         print(f"Status:      {task.status}")
-        print(f"Due Date:    {task.due_date or '-'}")
+        print(f"Due Date:    {task.due_date or '-'} ({time_str})")
         print(f"Project:     {task.project.name if task.project else 'No Project'}")
         print("=" * 40)
 
@@ -342,9 +373,6 @@ def delete_task():
 
 def view_task_details():
     """Display details for a given task."""
-    # This function can reuse find_task() logic or just call find_task()
-    # but to keep consistency, we will implement it fully here.
-
     session = SessionLocal()
     try:
         task_id = input("Enter the task ID to view details: ").strip()
@@ -357,13 +385,19 @@ def view_task_details():
             print(f"⚠️ No task found with ID {task_id}.")
             return
 
+        days = task.days_remaining
+        if days is None:
+            time_str = "No due date"
+        else:
+            time_str = f"{days}d remaining" if days >= 0 else f"Overdue by {abs(days)}d"
+
         print("\n📝 TASK DETAILS")
         print("=" * 40)
         print(f"ID:          {task.id}")
         print(f"Name:        {task.name}")
         print(f"Description: {task.description or '-'}")
         print(f"Status:      {task.status}")
-        print(f"Due Date:    {task.due_date or '-'}")
+        print(f"Due Date:    {task.due_date or '-'} ({time_str})")
         print(f"Project:     {task.project.name if task.project else 'No Project'}")
         print("=" * 40)
 
