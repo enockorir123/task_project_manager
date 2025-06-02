@@ -5,7 +5,6 @@ from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship, validates
 from . import Base
 
-
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -15,13 +14,15 @@ class Task(Base):
     status = Column(String, nullable=False, default="To Do")  # To Do, In Progress, Done
     due_date = Column(Date, nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     project = relationship("Project", back_populates="tasks", lazy="joined")
+    user = relationship("User", back_populates="tasks", lazy="joined")
 
     @validates("due_date")
     def validate_due_date(self, key, due_value):
         """
-        Ensure due_date is not before today (optional) and (if project.deadline exists) not after it.
+        Ensure due_date is not in the past and, if project.deadline exists, not after it.
         """
         if due_value and due_value < date.today():
             raise ValueError(f"Due date ({due_value}) cannot be in the past.")
@@ -32,10 +33,11 @@ class Task(Base):
         return due_value
 
     @property
-    def days_remaining(self) -> int:
+    def days_remaining(self) -> int | None:
         if not self.due_date:
             return None
         return (self.due_date - date.today()).days
 
     def __repr__(self):
-        return f"<Task(id={self.id}, name='{self.name}', status='{self.status}')>"
+        user_part = f", user_id={self.user_id}" if self.user_id else ""
+        return f"<Task(id={self.id}, name='{self.name}', status='{self.status}'{user_part})>"

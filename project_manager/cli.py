@@ -3,11 +3,20 @@
 import sys
 import os
 
+# Ensure the project root is on Python's path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# ─── Create all tables (projects, tasks, users) if they don’t already exist ───
 from project_manager.models import Base, engine
+
+# Import each model so Base.metadata knows about them
 import project_manager.models.project
 import project_manager.models.task
+import project_manager.models.user   # ← New User model import
+
 Base.metadata.create_all(bind=engine)
+# ───────────────────────────────────────────────────────────────────────────────
+
 from project_manager.helpers import (
     exit_program,
     create_project,
