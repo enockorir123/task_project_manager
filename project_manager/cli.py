@@ -6,16 +6,12 @@ import os
 # Ensure the project root is on Python's path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# ─── Create all tables (projects, tasks, users) if they don’t already exist ───
+# Create tables if they don’t exist
 from project_manager.models import Base, engine
-
-# Import each model so Base.metadata knows about them
 import project_manager.models.project
 import project_manager.models.task
-import project_manager.models.user   # ← New User model import
-
+import project_manager.models.user
 Base.metadata.create_all(bind=engine)
-# ───────────────────────────────────────────────────────────────────────────────
 
 from project_manager.helpers import (
     exit_program,
@@ -29,6 +25,10 @@ from project_manager.helpers import (
     find_task,
     delete_task,
     view_task_details,
+    create_user,
+    list_users,
+    find_user,
+    delete_user,
 )
 
 def main():
@@ -36,6 +36,7 @@ def main():
         print("\n=== TASK & PROJECT MANAGER ===")
         print("1. Projects")
         print("2. Tasks")
+        print("3. Users")
         print("0. Exit")
         choice = input("> ").strip()
 
@@ -45,8 +46,10 @@ def main():
             project_menu()
         elif choice == "2":
             task_menu()
+        elif choice == "3":
+            user_menu()
         else:
-            print("❌ Invalid choice. Please select 0, 1, or 2.")
+            print("❌ Invalid choice. Please select 0, 1, 2, or 3.")
 
 def project_menu():
     while True:
@@ -99,6 +102,29 @@ def task_menu():
             view_task_details()
         else:
             print("❌ Invalid choice. Choose 0–5.")
+
+def user_menu():
+    while True:
+        print("\n--- USER MENU ---")
+        print("1. Create a user")
+        print("2. List all users")
+        print("3. Find a user by name or ID")
+        print("4. Delete a user")
+        print("0. Back to main menu")
+        choice = input("> ").strip()
+
+        if choice == "0":
+            return
+        elif choice == "1":
+            create_user()
+        elif choice == "2":
+            list_users()
+        elif choice == "3":
+            find_user()
+        elif choice == "4":
+            delete_user()
+        else:
+            print("❌ Invalid choice. Choose 0–4.")
 
 if __name__ == "__main__":
     main()
