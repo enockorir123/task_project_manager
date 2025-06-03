@@ -1,6 +1,7 @@
 # project_manager/helpers.py
 
 from datetime import datetime, date
+import sqlalchemy as sa
 from project_manager.models import SessionLocal
 from project_manager.models.project import Project
 from project_manager.models.task import Task
@@ -149,6 +150,60 @@ def find_project():
     finally:
         session.close()
 
+def update_project():
+    """Update a project’s name, description, deadline, or priority."""
+    session = SessionLocal()
+    try:
+        project_id = input("Enter the project ID to update: ").strip()
+        if not project_id.isdigit():
+            print("❌ Invalid project ID.")
+            return
+
+        project = session.query(Project).filter(Project.id == int(project_id)).first()
+        if not project:
+            print(f"⚠️ No project found with ID {project_id}.")
+            return
+
+        print("\n--- UPDATE PROJECT ---")
+        print(f"Current name: {project.name}")
+        new_name = input("New name (leave blank to keep current): ").strip()
+        if new_name:
+            project.name = new_name
+
+        print(f"Current description: {project.description or '-'}")
+        new_desc = input("New description (leave blank to keep current): ").strip()
+        if new_desc:
+            project.description = new_desc
+
+        print(f"Current deadline: {project.deadline}")
+        new_dead = input("New deadline [YYYY-MM-DD] (leave blank to keep current): ").strip()
+        if new_dead:
+            try:
+                new_dead_dt = datetime.strptime(new_dead, "%Y-%m-%d").date()
+                if new_dead_dt < project.start_date:
+                    print("❌ Deadline cannot be before start date!")
+                    return
+                project.deadline = new_dead_dt
+            except ValueError:
+                print("❌ Invalid date format! Use YYYY-MM-DD")
+                return
+
+        print(f"Current priority: {project.priority}")
+        print("Priority levels: 1=High, 2=Medium, 3=Low")
+        new_prio = input("Select new priority (1-3) (leave blank to keep current): ").strip()
+        if new_prio in ('1', '2', '3'):
+            priority_map = {'1': 'High', '2': 'Medium', '3': 'Low'}
+            project.priority = priority_map[new_prio]
+
+        session.commit()
+        print(f"✅ Project ID {project.id} updated successfully.")
+
+    except Exception as e:
+        session.rollback()
+        print(f"❌ Error updating project: {e}")
+    finally:
+        session.close()
+
 def delete_project():
     """Delete a project and its tasks."""
     session = SessionLocal()
@@ -206,9 +261,10 @@ def view_project_tasks():
                 f"{days}d remaining" if days >= 0
                 else f"Overdue by {abs(days)}d"
             ) if t.due_date else "No due date"
+            user_info = f" | User: {t.user.name} ({t.user.email})" if t.user else ""
             print(
                 f"ID: {t.id} | Name: {t.name} | Status: {t.status} | "
-                f"Due: {t.due_date or '-'} ({time_str})"
+                f"Due: {t.due_date or '-'} ({time_str}){user_info}"
             )
         print("=" * 60)
 
@@ -372,6 +428,92 @@ def find_task():
 
     except Exception as e:
         print(f"❌ Error finding task: {e}")
+    finally:
+        session.close()
+
+def update_task():
+    """Update a task’s name, description, status, due date, project, or user."""
+    session = SessionLocal()
+    try:
+        task_id = input("Enter the task ID to update: ").strip()
+        if not task_id.isdigit():
+            print("❌ Invalid task ID.")
+            return
+
+        task = session.query(Task).filter(Task.id == int(task_id)).first()
+        if not task:
+            print(f"⚠️ No task found with ID {task_id}.")
+            return
+
+        print("\n--- UPDATE TASK ---")
+        print(f"Current name: {task.name}")
+        new_name = input("New name (leave blank to keep current): ").strip()
+        if new_name:
+            task.name = new_name
+
+        print(f"Current description: {task.description or '-'}")
+        new_desc = input("New description (leave blank to keep current): ").strip()
+        if new_desc:
+            task.description = new_desc
+
+        print(f"Current status: {task.status}")
+        print("Status options: 1=To Do, 2=In Progress, 3=Done")
+        new_status = input("Select new status (1-3) (leave blank to keep current): ").strip()
+        if new_status in ('1', '2', '3'):
+            status_map = {'1': 'To Do', '2': 'In Progress', '3': 'Done'}
+            task.status = status_map[new_status]
+
+        print(f"Current due date: {task.due_date or '-'}")
+        new_due = input("New due date [YYYY-MM-DD] (leave blank to keep current): ").strip()
+        if new_due:
+            try:
+                new_due_dt = datetime.strptime(new_due, "%Y-%m-%d").date()
+                if new_due_dt < date.today():
+                    print("❌ Due date cannot be in the past!")
+                    return
+                if new_due_dt > task.project.deadline:
+                    print(f"❌ Due date cannot exceed project deadline ({task.project.deadline})!")
+                    return
+                task.due_date = new_due_dt
+            except ValueError:
+                print("❌ Invalid date format! Use YYYY-MM-DD")
+                return
+
+        # Reassign project (optional)
+        print(f"Current project ID: {task.project_id}")
+        new_proj = input("New project ID (leave blank to keep current): ").strip()
+        if new_proj:
+            if not new_proj.isdigit():
+                print("❌ Invalid project ID.")
+                return
+            proj = session.query(Project).filter(Project.id == int(new_proj)).first()
+            if not proj:
+                print(f"❌ Project with ID {new_proj} does not exist!")
+                return
+            task.project_id = proj.id
+
+        # Reassign user (optional)
+        print(f"Current assigned user ID: {task.user_id or 'None'}")
+        users = session.query(User).all()
+        if users:
+            for u in users:
+                print(f"  {u.id}. {u.name} ({u.email})")
+        new_user = input("New user ID (leave blank to keep current or '0' to unassign): ").strip()
+        if new_user == '0':
+            task.user_id = None
+        elif new_user.isdigit():
+            u = session.query(User).filter(User.id == int(new_user)).first()
+            if not u:
+                print("❌ Invalid user ID.")
+                return
+            task.user_id = u.id
+
+        session.commit()
+        print(f"✅ Task ID {task.id} updated successfully.")
+
+    except Exception as e:
+        session.rollback()
+        print(f"❌ Error updating task: {e}")
     finally:
         session.close()
 
