@@ -18,11 +18,13 @@ from project_manager.helpers import (
     create_project,
     list_projects,
     find_project,
+    update_project,       # ← new
     delete_project,
     view_project_tasks,
     create_task,
     list_tasks,
     find_task,
+    update_task,          # ← new
     delete_task,
     view_task_details,
     create_user,
@@ -57,8 +59,9 @@ def project_menu():
         print("1. Create a project")
         print("2. List all projects")
         print("3. Find a project by name or ID")
-        print("4. Delete a project")
-        print("5. View tasks for a project")
+        print("4. Update a project")
+        print("5. Delete a project")
+        print("6. View tasks for a project")
         print("0. Back to main menu")
         choice = input("> ").strip()
 
@@ -71,11 +74,13 @@ def project_menu():
         elif choice == "3":
             find_project()
         elif choice == "4":
-            delete_project()
+            update_project()    
         elif choice == "5":
+            delete_project()
+        elif choice == "6":
             view_project_tasks()
         else:
-            print("❌ Invalid choice. Choose 0–5.")
+            print("❌ Invalid choice. Choose 0–6.")
 
 def task_menu():
     while True:
@@ -83,8 +88,9 @@ def task_menu():
         print("1. Create a task")
         print("2. List all tasks")
         print("3. Find a task by name or ID")
-        print("4. Delete a task")
-        print("5. View task details")
+        print("4. Update a task")
+        print("5. Delete a task")
+        print("6. View task details")
         print("0. Back to main menu")
         choice = input("> ").strip()
 
@@ -97,11 +103,13 @@ def task_menu():
         elif choice == "3":
             find_task()
         elif choice == "4":
-            delete_task()
+            update_task()          
         elif choice == "5":
+            delete_task()
+        elif choice == "6":
             view_task_details()
         else:
-            print("❌ Invalid choice. Choose 0–5.")
+            print("❌ Invalid choice. Choose 0–6.")
 
 def user_menu():
     while True:
