@@ -4,6 +4,7 @@ from datetime import datetime, date
 from project_manager.models import SessionLocal
 from project_manager.models.project import Project
 from project_manager.models.task import Task
+from project_manager.models.user import User
 
 def exit_program():
     print("\nGoodbye!")
@@ -125,10 +126,10 @@ def find_project():
 
         perc = f"{project.completion_percentage:.0f}% complete"
         days = project.days_remaining
-        if days is None:
-            days_str = "No deadline set"
-        else:
-            days_str = f"{days} days remaining" if days >= 0 else f"Overdue by {abs(days)} days"
+        days_str = (
+            (f"{days} days remaining" if days >= 0 else f"Overdue by {abs(days)} days")
+            if days is not None else "No deadline"
+        )
 
         print("\n📋 PROJECT DETAILS")
         print("=" * 40)
@@ -259,12 +260,35 @@ def create_task():
                 print("❌ Invalid due date format! Use YYYY-MM-DD")
                 return
 
+        # Select user for this task (optional)
+        print("\nAssign a user to this task (optional):")
+        users = session.query(User).all()
+        if users:
+            for u in users:
+                print(f"  {u.id}. {u.name} ({u.email})")
+            user_choice = input("Select user ID or leave blank: ").strip()
+            if user_choice == "":
+                user_id = None
+            elif user_choice.isdigit():
+                chosen = session.query(User).filter(User.id == int(user_choice)).first()
+                if chosen:
+                    user_id = chosen.id
+                else:
+                    print("❌ Invalid user selection!")
+                    return
+            else:
+                print("❌ Invalid input for user ID.")
+                return
+        else:
+            user_id = None
+
         task = Task(
             name=name,
             description=description,
             status=status,
             due_date=due_date,
-            project_id=project.id
+            project_id=project.id,
+            user_id=user_id
         )
 
         session.add(task)
@@ -274,6 +298,8 @@ def create_task():
         if due_date:
             print(f"   Due date: {due_date}")
         print(f"   Status: {status}")
+        if user_id:
+            print(f"   Assigned to user ID: {user_id}")
 
     except Exception as e:
         session.rollback()
@@ -296,10 +322,14 @@ def list_tasks():
             project_name = t.project.name if t.project else "No Project"
             due = t.due_date or "-"
             days = t.days_remaining
-            time_str = f"{days}d remaining" if days is not None and days >= 0 else (f"Overdue by {abs(days)}d" if days is not None else "No due date")
+            time_str = (
+                f"{days}d remaining" if days is not None and days >= 0
+                else (f"Overdue by {abs(days)}d" if days is not None else "No due date")
+            )
+            user_info = f" | User: {t.user.name} ({t.user.email})" if t.user else ""
             print(
                 f"ID: {t.id} | Name: {t.name} | Project: {project_name} | "
-                f"Status: {t.status} | Due: {due} ({time_str})"
+                f"Status: {t.status} | Due: {due} ({time_str}){user_info}"
             )
         print("=" * 60)
     except Exception as e:
@@ -327,6 +357,8 @@ def find_task():
         else:
             time_str = f"{days}d remaining" if days >= 0 else f"Overdue by {abs(days)}d"
 
+        user_info = f"{task.user.name} ({task.user.email})" if task.user else "No user assigned"
+
         print("\n📝 TASK DETAILS")
         print("=" * 40)
         print(f"ID:          {task.id}")
@@ -335,6 +367,7 @@ def find_task():
         print(f"Status:      {task.status}")
         print(f"Due Date:    {task.due_date or '-'} ({time_str})")
         print(f"Project:     {task.project.name if task.project else 'No Project'}")
+        print(f"Assigned to: {user_info}")
         print("=" * 40)
 
     except Exception as e:
@@ -391,6 +424,8 @@ def view_task_details():
         else:
             time_str = f"{days}d remaining" if days >= 0 else f"Overdue by {abs(days)}d"
 
+        user_info = f"{task.user.name} ({task.user.email})" if task.user else "No user assigned"
+
         print("\n📝 TASK DETAILS")
         print("=" * 40)
         print(f"ID:          {task.id}")
@@ -399,9 +434,123 @@ def view_task_details():
         print(f"Status:      {task.status}")
         print(f"Due Date:    {task.due_date or '-'} ({time_str})")
         print(f"Project:     {task.project.name if task.project else 'No Project'}")
+        print(f"Assigned to: {user_info}")
         print("=" * 40)
 
     except Exception as e:
         print(f"❌ Error viewing task details: {e}")
+    finally:
+        session.close()
+
+# ─── User Helpers ────────────────────────────────────────────────────────────
+
+def create_user():
+    """Create a new user with name and email."""
+    session = SessionLocal()
+    try:
+        print("\n👤 CREATE NEW USER")
+        print("=" * 40)
+
+        name = input("User name: ").strip()
+        if not name:
+            print("❌ User name cannot be empty!")
+            return
+
+        email = input("Email address: ").strip()
+        if not email:
+            print("❌ Email cannot be empty!")
+            return
+
+        # Check for duplicate email or name
+        existing = session.query(User).filter(
+            sa.or_(User.email == email, User.name == name)
+        ).first()
+        if existing:
+            print("❌ A user with that name or email already exists!")
+            return
+
+        user = User(name=name, email=email)
+        session.add(user)
+        session.commit()
+
+        print(f"✅ User '{name}' created successfully (ID: {user.id})")
+
+    except Exception as e:
+        session.rollback()
+        print(f"❌ Error creating user: {e}")
+    finally:
+        session.close()
+
+def list_users():
+    """List all users."""
+    session = SessionLocal()
+    try:
+        users = session.query(User).order_by(User.name).all()
+        if not users:
+            print("\n⚠️ No users found.\n")
+            return
+
+        print("\n👥 USER LIST")
+        print("=" * 50)
+        for u in users:
+            print(f"ID: {u.id} | Name: {u.name} | Email: {u.email}")
+        print("=" * 50)
+    except Exception as e:
+        print(f"❌ Error listing users: {e}")
+    finally:
+        session.close()
+
+def find_user():
+    """Find a user by ID or name."""
+    session = SessionLocal()
+    try:
+        search_term = input("Enter user ID or name to search: ").strip()
+        if search_term.isdigit():
+            user = session.query(User).filter(User.id == int(search_term)).first()
+        else:
+            user = session.query(User).filter(User.name.ilike(f"%{search_term}%")).first()
+
+        if not user:
+            print(f"⚠️ User '{search_term}' not found.")
+            return
+
+        print("\n👤 USER DETAILS")
+        print("=" * 40)
+        print(f"ID:    {user.id}")
+        print(f"Name:  {user.name}")
+        print(f"Email: {user.email}")
+        print("=" * 40)
+
+    except Exception as e:
+        print(f"❌ Error finding user: {e}")
+    finally:
+        session.close()
+
+def delete_user():
+    """Delete a user by ID."""
+    session = SessionLocal()
+    try:
+        user_id = input("Enter the user ID to delete: ").strip()
+        if not user_id.isdigit():
+            print("❌ Invalid user ID.")
+            return
+
+        user = session.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            print(f"⚠️ No user found with ID {user_id}.")
+            return
+
+        confirm = input(f"Are you sure you want to delete user '{user.name}'? (y/n): ").strip().lower()
+        if confirm != 'y':
+            print("❌ Deletion cancelled.")
+            return
+
+        session.delete(user)
+        session.commit()
+        print(f"✅ User '{user.name}' has been deleted.")
+
+    except Exception as e:
+        session.rollback()
+        print(f"❌ Error deleting user: {e}")
     finally:
         session.close()
