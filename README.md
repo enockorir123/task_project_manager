@@ -122,8 +122,8 @@ Projects Menu
 1. Create a project
 
  > 1
- Proyecto: Dukakit POS system
- Descripcion: Retail point-of-sale for local stores
+ Project: Dukakit POS system
+ Description: Retail point-of-sale for local stores
  Start date (default 2025-06-03):
  Deadline [YYYY-MM-DD]: 2025-07-01
  Priority (1=High,2=Medium,3=Low) [default=2]: 1
