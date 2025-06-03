@@ -479,7 +479,7 @@ def update_task():
                 print("❌ Invalid date format! Use YYYY-MM-DD")
                 return
 
-        # Reassign project (optional)
+        # Reassign project 
         print(f"Current project ID: {task.project_id}")
         new_proj = input("New project ID (leave blank to keep current): ").strip()
         if new_proj:
@@ -492,7 +492,7 @@ def update_task():
                 return
             task.project_id = proj.id
 
-        # Reassign user (optional)
+        # Reassign user 
         print(f"Current assigned user ID: {task.user_id or 'None'}")
         users = session.query(User).all()
         if users:

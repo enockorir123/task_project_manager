@@ -18,13 +18,13 @@ from project_manager.helpers import (
     create_project,
     list_projects,
     find_project,
-    update_project,       # ← new
+    update_project,      
     delete_project,
     view_project_tasks,
     create_task,
     list_tasks,
     find_task,
-    update_task,          # ← new
+    update_task,         
     delete_task,
     view_task_details,
     create_user,
@@ -131,6 +131,7 @@ def user_menu():
             find_user()
         elif choice == "4":
             delete_user()
+        
         else:
             print("❌ Invalid choice. Choose 0–4.")
 
